@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Mobile DJ Studio with Export</title>
+    <style>
+        :root {
+            --bg-color: #121214;
+            --panel-color: #1e1e24;
+            --accent-deck-a: #00e5ff;
+            --accent-deck-b: #ff007f;
+            --text-color: #e0e0e6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 10px;
+            padding-bottom: 30px;
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        h1 { font-size: 1.5rem; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.2); }
+
+        .studio-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Decks Layout */
+        .decks-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        @media (min-width: 768px) {
+            .decks-container {
+                flex-direction: row;
+            }
+            .deck {
+                flex: 1;
+            }
+        }
+
+        .deck {
+            background: var(--panel-color);
+            border-radius: 16px;
+            padding: 15px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .deck-a { border-top: 4px solid var(--accent-deck-a); }
+        .deck-b { border-top: 4px solid var(--accent-deck-b); }
+
+        .deck-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .deck-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .deck-a .deck-title { color: var(--accent-deck-a); }
+        .deck-b .deck-title { color: var(--accent-deck-b); }
+
+        .track-info {
+            background: rgba(0,0,0,0.3);
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            min-height: 52px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            border: 1px solid rgba(255,255,255,0.02);
+        }
+
+        .track-title {
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .track-time {
+            font-family: monospace;
+            color: #888;
+            margin-top: 3px;
+        }
+
+        /* Turntable Visual */
+        .turntable-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        .platter {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #2c2c35 30%, #0a0a0c 70%);
+            border: 6px solid #3a3a45;
+            position: relative;
+            box-shadow: 0 0 15px rgba(0,0,0,0.6);
+            transition: transform 0.1s linear;
+        }
+
+        .deck-a .platter { border-color: rgba(0, 229, 255, 0.3); }
+        .deck-b .platter { border-color: rgba(255, 0, 127, 0.3); }
+
+        .platter::before {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 20px; height: 20px;
+            background: #555;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            border: 2px solid #fff;
+        }
+
+        .vinyl-line {
+            position: absolute;
+            top: 0; left: 50%;
+            width: 2px; height: 50%;
+            background: rgba(255,255,255,0.6);
+            transform-origin: bottom center;
+        }
+
+        .spinning {
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Controls styling */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        button {
+            background: #2d2d38;
+            color: #fff;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-play { background: #2e7d32; }
+        .btn-play.playing { background: #d32f2f; }
+
+        /* Sliders */
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            background: rgba(0,0,0,0.15);
+            padding: 8px;
+            border-radius: 8px;
+        }
+
+        .control-group label {
+            font-size: 0.75rem;
+            color: #aaa;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: #3d3d4a;
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .deck-a input[type="range"]::-webkit-slider-thumb { background: var(--accent-deck-a); }
+        .deck-b input[type="range"]::-webkit-slider-thumb { background: var(--accent-deck-b); }
+
+        /* File inputs & Queue */
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            left: 0; top: 0; opacity: 0;
+            width: 100%; height: 100%;
+            cursor: pointer;
+        }
+
+        .queue-section {
+            margin-top: 5px;
+        }
+
+        .queue-list {
+            list-style: none;
+            margin-top: 5px;
+            max-height: 80px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        .queue-item {
+            padding: 6px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .queue-item span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 75%;
+        }
+
+        .queue-item button {
+            padding: 2px 6px;
+            font-size: 0.65rem;
+            background: #444;
+        }
+
+        /* Mixer / Master Section */
+        .mixer-panel {
+            background: var(--panel-color);
+            border-radius: 16px;
+            padding: 15px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .mixer-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        @media (min-width: 600px) {
+            .mixer-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* Mix Recorder List */
+        .saved-mixes-panel {
+            background: var(--panel-color);
+            border-radius: 16px;
+            padding: 15px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+
+        .mix-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+
+        .mix-item {
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        .mix-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .mix-actions button {
+            padding: 4px 8px;
+            font-size: 0.75rem;
+        }
+
+        .btn-danger { background: #c62828; }
+        .btn-success { background: #2e7d32; }
+
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+        }
+        .preset-buttons button {
+            font-size: 0.7rem;
+            padding: 6px;
+        }
+
+        /* Live Recorder UI Box */
+        .recorder-box {
+            background: #25252e;
+            border: 1px dashed #444;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .recording-active {
+            background: #4a1525 !important;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎛️ Advanced Mobile DJ Studio</h1>
+
+    <div class="studio-container">
+        
+        <div class="decks-container">
+            
+            <div class="deck deck-a" id="deck-A">
+                <div class="deck-header">
+                    <span class="deck-title">DECK A</span>
+                    <div class="file-input-wrapper">
+                        <button type="button" style="width:100%">+ Load MP3</button>
+                        <input type="file" class="audio-loader" accept="audio/*">
+                    </div>
+                </div>
+
+                <div class="track-info">
+                    <div class="track-title" id="title-A">No Track Loaded</div>
+                    <div class="track-time" id="time-A">00:00 / 00:00</div>
+                </div>
+
+                <div class="turntable-wrapper">
+                    <div class="platter" id="platter-A">
+                        <div class="vinyl-line"></div>
+                    </div>
+                </div>
+
+                <div class="controls-grid">
+                    <button class="btn-play" id="play-A">▶ PLAY</button>
+                    <button id="cue-A">⏸ CUE</button>
+                </div>
+
+                <div class="control-group">
+                    <label><span>Pitch (Speed)</span><span id="pitch-val-A">1.0x</span></label>
+                    <input type="range" class="pitch-slider" min="0.5" max="1.5" step="0.01" value="1">
+                </div>
+
+                <div class="queue-section">
+                    <div class="file-input-wrapper">
+                        <button type="button" style="width:100%; background:#333; font-size:0.75rem;">+ Add to Queue</button>
+                        <input type="file" class="queue-loader" accept="audio/*">
+                    </div>
+                    <ul class="queue-list" id="queue-list-A"></ul>
+                </div>
+            </div>
+
+            <div class="deck deck-b" id="deck-B">
+                <div class="deck-header">
+                    <span class="deck-title">DECK B</span>
+                    <div class="file-input-wrapper">
+                        <button type="button" style="width:100%">+ Load MP3</button>
+                        <input type="file" class="audio-loader" accept="audio/*">
+                    </div>
+                </div>
+
+                <div class="track-info">
+                    <div class="track-title" id="title-B">No Track Loaded</div>
+                    <div class="track-time" id="time-B">00:00 / 00:00</div>
+                </div>
+
+                <div class="turntable-wrapper">
+                    <div class="platter" id="platter-B">
+                        <div class="vinyl-line"></div>
+                    </div>
+                </div>
+
+                <div class="controls-grid">
+                    <button class="btn-play" id="play-B">▶ PLAY</button>
+                    <button id="cue-B">⏸ CUE</button>
+                </div>
+
+                <div class="control-group">
+                    <label><span>Pitch (Speed)</span><span id="pitch-val-B">1.0x</span></label>
+                    <input type="range" class="pitch-slider" min="0.5" max="1.5" step="0.01" value="1">
+                </div>
+
+                <div class="queue-section">
+                    <div class="file-input-wrapper">
+                        <button type="button" style="width:100%; background:#333; font-size:0.75rem;">+ Add to Queue</button>
+                        <input type="file" class="queue-loader" accept="audio/*">
+                    </div>
+                    <ul class="queue-list" id="queue-list-B"></ul>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="mixer-panel">
+            <h2>🎚️ MIXER & EFFECTS</h2>
+            <div class="mixer-grid">
+                
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <div class="control-group">
+                        <label><span>🔀 Crossfader</span></label>
+                        <input type="range" id="crossfader" min="-1" max="1" step="0.01" value="0">
+                    </div>
+                    <div class="control-group">
+                        <label><span>⚖️ L/R Balance</span></label>
+                        <input type="range" id="balance" min="-1" max="1" step="0.01" value="0">
+                    </div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <div class="control-group">
+                        <label><span>Low Pass Filter (Bass)</span></label>
+                        <input type="range" id="lpf" min="200" max="20000" step="10" value="20000">
+                    </div>
+                    <div class="control-group">
+                        <label><span>High Pass Filter (Treble)</span></label>
+                        <input type="range" id="hpf" min="20" max="5000" step="10" value="20">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label><span>Audio Presets</span></label>
+                    <div class="preset-buttons">
+                        <button id="preset-normal">Reset</button>
+                        <button id="preset-club">Club Sub</button>
+                        <button id="preset-radio">Lo-Fi Radio</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="recorder-box">
+                <h3 style="font-size:1rem; margin-bottom:5px;">🔴 LIVE MIX RECORDER</h3>
+                <div style="display:flex; gap:10px; justify-content:center;">
+                    <button id="start-rec-btn" style="background:#d32f2f;">🔴 Start Recording</button>
+                    <button id="stop-rec-btn" style="background:#333;" disabled>⏹️ Stop & Download Mix</button>
+                </div>
+                <div id="rec-status" style="font-size:0.75rem; margin-top:5px; color:#aaa;">Status: Ready</div>
+            </div>
+        </div>
+
+        <div class="saved-mixes-panel">
+            <h2>💾 SESSION WORKSPACE</h2>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <input type="text" id="mix-name" placeholder="Name your session configuration..." style="flex:1; padding:10px; border-radius:8px; border:none; background:#2a2a35; color:#fff;">
+                <button class="btn-success" id="save-mix-btn">Save Setup</button>
+            </div>
+            <ul class="mix-list" id="saved-mixes-list"></ul>
+        </div>
+
+    </div>
+
+    <script>
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        const decks = {
+            A: { audioElement: new Audio(), source: null, gainNode: null, queue: [], isPlaying: false },
+            B: { audioElement: new Audio(), source: null, gainNode: null, queue: [], isPlaying: false }
+        };
+
+        let lowPassFilter;
+        let highPassFilter;
+        let masterBalance;
+        
+        // Recording variables
+        let audioRecorder;
+        let recordedChunks = [];
+        let recordDestNode;
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new AudioContext();
+
+            lowPassFilter = audioCtx.createBiquadFilter();
+            lowPassFilter.type = 'lowpass';
+            lowPassFilter.frequency.setValueAtTime(20000, audioCtx.currentTime);
+
+            highPassFilter = audioCtx.createBiquadFilter();
+            highPassFilter.type = 'highpass';
+            highPassFilter.frequency.setValueAtTime(20, audioCtx.currentTime);
+
+            masterBalance = audioCtx.createStereoPanner();
+
+            // Setup recording routing destination node
+            recordDestNode = audioCtx.createMediaStreamDestination();
+
+            // Chain: Decks -> Filters -> Panner -> Master Out AND Recording Node Splitter
+            lowPassFilter.connect(highPassFilter);
+            highPassFilter.connect(masterBalance);
+            
+            masterBalance.connect(audioCtx.destination);
+            masterBalance.connect(recordDestNode); // Sends everything directly to the recorder output
+
+            setupDeckAudio('A');
+            setupDeckAudio('B');
+            updateCrossfader();
+            setupRecorderLogic();
+        }
+
+        function setupDeckAudio(id) {
+            const deck = decks[id];
+            deck.audioElement.crossOrigin = "anonymous";
+            deck.source = audioCtx.createMediaElementSource(deck.audioElement);
+            deck.gainNode = audioCtx.createGain();
+            
+            deck.source.connect(deck.gainNode);
+            deck.gainNode.connect(lowPassFilter);
+
+            deck.audioElement.addEventListener('timeupdate', () => {
+                const cur = formatTime(deck.audioElement.currentTime);
+                const dur = formatTime(deck.audioElement.duration || 0);
+                document.getElementById(`time-${id}`).innerText = `${cur} / ${dur}`;
+            });
+        }
+
+        function formatTime(secs) {
+            let m = Math.floor(secs / 60);
+            let s = Math.floor(secs % 60);
+            return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+
+        // Live Audio Recorder Logic Integration
+        function setupRecorderLogic() {
+            // Checks for MediaRecorder API availability
+            if (!window.MediaRecorder) {
+                document.getElementById('rec-status').innerText = "Status: Recorder unsupported on this engine variant.";
+                return;
+            }
+
+            audioRecorder = new MediaRecorder(recordDestNode.stream, { mimeType: 'audio/webm' });
+
+            audioRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+
+            audioRecorder.onstop = () => {
+                document.getElementById('rec-status').innerText = "Status: Exporting Audio...";
+                
+                // Package the array chunks safely to read cleanly into mobile storage systems
+                const audioBlob = new Blob(recordedChunks, { type: 'audio/mp3' });
+                const downloadUrl = URL.createObjectURL(audioBlob);
+                
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.href = downloadUrl;
+                downloadAnchor.download = `DJ_Mix_${Date.now()}.mp3`;
+                
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click(); // Fires download request intercepted by WebView toggle
+                
+                document.body.removeChild(downloadAnchor);
+                recordedChunks = [];
+                document.getElementById('rec-status').innerText = "Status: Download Triggered Successfully.";
+            };
+        }
+
+        // Trigger Controls for Recording UI
+        document.getElementById('start-rec-btn').addEventListener('click', () => {
+            initAudio();
+            if(!audioRecorder) return;
+            
+            audioCtx.resume();
+            recordedChunks = [];
+            audioRecorder.start();
+            
+            document.getElementById('start-rec-btn').disabled = true;
+            document.getElementById('start-rec-btn').classList.add('recording-active');
+            document.getElementById('stop-rec-btn').disabled = false;
+            document.getElementById('rec-status').innerText = "Status: 🔴 RECORDING LIVE MASTER MIX...";
+        });
+
+        document.getElementById('stop-rec-btn').addEventListener('click', () => {
+            if(!audioRecorder || audioRecorder.state === "inactive") return;
+            
+            audioRecorder.stop();
+            document.getElementById('start-rec-btn').disabled = false;
+            document.getElementById('start-rec-btn').classList.remove('recording-active');
+            document.getElementById('stop-rec-btn').disabled = true;
+        });
+
+        // Load Audio Files Control
+        document.querySelectorAll('.audio-loader').forEach((input, index) => {
+            input.addEventListener('change', (e) => {
+                initAudio();
+                const id = index === 0 ? 'A' : 'B';
+                const file = e.target.files[0];
+                if(file) loadTrack(id, file);
+            });
+        });
+
+        function loadTrack(id, file) {
+            const url = URL.createObjectURL(file);
+            decks[id].audioElement.src = url;
+            document.getElementById(`title-${id}`).innerText = file.name;
+            resetDeckPlaybackState(id);
+        }
+
+        function resetDeckPlaybackState(id) {
+            decks[id].isPlaying = false;
+            const playBtn = document.getElementById(`play-${id}`);
+            playBtn.innerText = "▶ PLAY";
+            playBtn.classList.remove('playing');
+            document.getElementById(`platter-${id}`).classList.remove('spinning');
+        }
+
+        function togglePlay(id) {
+            initAudio();
+            const deck = decks[id];
+            const playBtn = document.getElementById(`play-${id}`);
+            const platter = document.getElementById(`platter-${id}`);
+
+            if (deck.audioElement.src === "") return;
+
+            if (deck.isPlaying) {
+                deck.audioElement.pause();
+                deck.isPlaying = false;
+                playBtn.innerText = "▶ PLAY";
+                playBtn.classList.remove('playing');
+                platter.classList.remove('spinning');
+            } else {
+                audioCtx.resume();
+                deck.audioElement.play().catch(e => console.log(e));
+                deck.isPlaying = true;
+                playBtn.innerText = "⏸ PAUSE";
+                playBtn.classList.add('playing');
+                platter.classList.add('spinning');
+            }
+        }
+
+        document.getElementById('play-A').addEventListener('click', () => togglePlay('A'));
+        document.getElementById('play-B').addEventListener('click', () => togglePlay('B'));
+
+        document.getElementById('cue-A').addEventListener('click', () => { decks.A.audioElement.currentTime = 0; });
+        document.getElementById('cue-B').addEventListener('click', () => { decks.B.audioElement.currentTime = 0; });
+
+        document.querySelectorAll('.pitch-slider').forEach((slider, index) => {
+            const id = index === 0 ? 'A' : 'B';
+            slider.addEventListener('input', (e) => {
+                const val = e.target.value;
+                document.getElementById(`pitch-val-${id}`).innerText = `${val}x`;
+                if(decks[id].audioElement) {
+                    decks[id].audioElement.playbackRate = val;
+                }
+            });
+        });
+
+        document.querySelectorAll('.queue-loader').forEach((input, index) => {
+            input.addEventListener('change', (e) => {
+                const id = index === 0 ? 'A' : 'B';
+                const file = e.target.files[0];
+                if(file) {
+                    decks[id].queue.push(file);
+                    renderQueue(id);
+                }
+            });
+        });
+
+        function renderQueue(id) {
+            const container = document.getElementById(`queue-list-${id}`);
+            container.innerHTML = "";
+            decks[id].queue.forEach((file, index) => {
+                const li = document.createElement('li');
+                li.className = "queue-item";
+                li.innerHTML = `
+                    <span>${file.name}</span>
+                    <button onclick="loadFromQueue('${id}', ${index})">Load</button>
+                `;
+                container.appendChild(li);
+            });
+        }
+
+        function loadFromQueue(id, index) {
+            initAudio();
+            const file = decks[id].queue[index];
+            loadTrack(id, file);
+            decks[id].queue.splice(index, 1);
+            renderQueue(id);
+        }
+
+        const crossfader = document.getElementById('crossfader');
+        crossfader.addEventListener('input', updateCrossfader);
+
+        function updateCrossfader() {
+            if (!audioCtx) return;
+            const value = parseFloat(crossfader.value); 
+            let gainA = Math.cos((value + 1) * Math.PI / 4);
+            let gainB = Math.sin((value + 1) * Math.PI / 4);
+
+            if(decks.A.gainNode) decks.A.gainNode.gain.setValueAtTime(gainA, audioCtx.currentTime);
+            if(decks.B.gainNode) decks.B.gainNode.gain.setValueAtTime(gainB, audioCtx.currentTime);
+        }
+
+        document.getElementById('balance').addEventListener('input', (e) => {
+            if(masterBalance) masterBalance.pan.setValueAtTime(e.target.value, audioCtx.currentTime);
+        });
+
+        document.getElementById('lpf').addEventListener('input', (e) => {
+            if(lowPassFilter) lowPassFilter.frequency.setValueAtTime(e.target.value, audioCtx.currentTime);
+        });
+
+        document.getElementById('hpf').addEventListener('input', (e) => {
+            if(highPassFilter) highPassFilter.frequency.setValueAtTime(e.target.value, audioCtx.currentTime);
+        });
+
+        document.getElementById('preset-normal').addEventListener('click', () => { setFilters(20000, 20); });
+        document.getElementById('preset-club').addEventListener('click', () => { setFilters(800, 20); });
+        document.getElementById('preset-radio').addEventListener('click', () => { setFilters(4000, 600); });
+
+        function setFilters(lpFreq, hpFreq) {
+            if(!audioCtx) initAudio();
+            lowPassFilter.frequency.setValueAtTime(lpFreq, audioCtx.currentTime);
+            highPassFilter.frequency.setValueAtTime(hpFreq, audioCtx.currentTime);
+            document.getElementById('lpf').value = lpFreq;
+            document.getElementById('hpf').value = hpFreq;
+        }
+
+        // Configuration Session Storage
+        document.getElementById('save-mix-btn').addEventListener('click', () => {
+            const nameInput = document.getElementById('mix-name');
+            const name = nameInput.value.trim() || `Mix Session ${new Date().toLocaleTimeString()}`;
+            
+            const sessionData = {
+                id: Date.now(),
+                name: name,
+                crossfader: crossfader.value,
+                balance: document.getElementById('balance').value,
+                lpf: document.getElementById('lpf').value,
+                hpf: document.getElementById('hpf').value,
+                pitchA: document.querySelector('#deck-A .pitch-slider').value,
+                pitchB: document.querySelector('#deck-B .pitch-slider').value,
+            };
+
+            let sessions = JSON.parse(localStorage.getItem('dj_studio_sessions') || '[]');
+            sessions.push(sessionData);
+            localStorage.setItem('dj_studio_sessions', JSON.stringify(sessions));
+            nameInput.value = "";
+            loadSavedSessions();
+        });
+
+        function loadSavedSessions() {
+            const list = document.getElementById('saved-mixes-list');
+            list.innerHTML = "";
+            let sessions = JSON.parse(localStorage.getItem('dj_studio_sessions') || '[]');
+
+            sessions.forEach(session => {
+                const li = document.createElement('li');
+                li.className = "mix-item";
+                li.innerHTML = `
+                    <strong>${session.name}</strong>
+                    <div class="mix-actions">
+                        <button class="btn-success" onclick="applySession(${session.id})">Trigger</button>
+                        <button class="btn-danger" onclick="deleteSession(${session.id})">Delete</button>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        window.applySession = function(id) {
+            initAudio();
+            let sessions = JSON.parse(localStorage.getItem('dj_studio_sessions') || '[]');
+            const config = sessions.find(s => s.id === id);
+            if(!config) return;
+
+            crossfader.value = config.crossfader;
+            document.getElementById('balance').value = config.balance;
+            document.getElementById('lpf').value = config.lpf;
+            document.getElementById('hpf').value = config.hpf;
+            document.querySelector('#deck-A .pitch-slider').value = config.pitchA;
+            document.querySelector('#deck-B .pitch-slider').value = config.pitchB;
+            document.getElementById('pitch-val-A').innerText = `${config.pitchA}x`;
+            document.getElementById('pitch-val-B').innerText = `${config.pitchB}x`;
+
+            updateCrossfader();
+            masterBalance.pan.setValueAtTime(config.balance, audioCtx.currentTime);
+            lowPassFilter.frequency.setValueAtTime(config.lpf, audioCtx.currentTime);
+            highPassFilter.frequency.setValueAtTime(config.hpf, audioCtx.currentTime);
+            decks.A.audioElement.playbackRate = config.pitchA;
+            decks.B.audioElement.playbackRate = config.pitchB;
+        };
+
+        window.deleteSession = function(id) {
+            let sessions = JSON.parse(localStorage.getItem('dj_studio_sessions') || '[]');
+            sessions = sessions.filter(s => s.id !== id);
+            localStorage.setItem('dj_studio_sessions', JSON.stringify(sessions));
+            loadSavedSessions();
+        };
+
+        loadSavedSessions();
+    </script>
+</body>
+</html>
